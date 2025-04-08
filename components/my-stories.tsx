@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { ChevronRight } from "lucide-react"
-import { motion } from "framer-motion"
 
 // Sample story data
 const stories = [
@@ -84,6 +83,7 @@ Niềm vui lớn nhất của tôi là khi thấy các học trò và mentee c�
 
 export default function MyStories() {
   const [expandedStory, setExpandedStory] = useState<string | null>(null)
+  const storyRefs = useRef<(HTMLDivElement | null)[]>([])
 
   const toggleStory = (id: string) => {
     if (expandedStory === id) {
@@ -93,34 +93,51 @@ export default function MyStories() {
     }
   }
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("show")
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.1 },
+    )
+
+    storyRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref)
+    })
+
+    return () => {
+      storyRefs.current.forEach((ref) => {
+        if (ref) observer.unobserve(ref)
+      })
+    }
+  }, [])
+
   return (
     <div className="w-full">
       <div className="space-y-16">
         {stories.map((story, index) => (
-          <motion.div
+          <div
             key={story.id}
-            className="group"
-            initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: index * 0.1 }}
+            ref={(el) => (storyRefs.current[index] = el)}
+            className={`group animate-on-scroll ${index % 2 === 0 ? "from-left" : "from-right"}`}
           >
             <div
               className={`flex flex-col ${index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"} gap-8 lg:gap-12 items-center`}
             >
               {/* Image */}
               <div className="w-full lg:w-1/2 overflow-hidden rounded-xl">
-                <motion.div
-                  className="relative h-64 md:h-80 lg:h-96 w-full"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.5 }}
-                >
+                <div className="relative h-64 md:h-80 lg:h-96 w-full transform transition-transform duration-700 group-hover:scale-105">
                   <Image src={story.image || "/placeholder.svg"} alt={story.title} fill className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70"></div>
                   <div className="absolute bottom-4 left-4 text-sm text-white bg-green-500/80 px-3 py-1 rounded-full backdrop-blur-sm">
                     {story.date}
                   </div>
-                </motion.div>
+                </div>
               </div>
 
               {/* Content */}
@@ -131,33 +148,28 @@ export default function MyStories() {
 
                 <p className="text-gray-700 dark:text-gray-200 leading-relaxed">{story.description}</p>
 
-                <motion.button
+                <button
                   onClick={() => toggleStory(story.id)}
-                  className="inline-flex items-center text-green-600 dark:text-green-400 font-medium mt-2"
-                  whileHover={{ x: 5 }}
-                  transition={{ duration: 0.2 }}
+                  className="inline-flex items-center text-green-600 dark:text-green-400 font-medium mt-2 group-hover:translate-x-1 transition-transform duration-300"
                 >
                   {expandedStory === story.id ? "Thu gọn" : "Xem chi tiết"}
-                  <motion.div animate={{ rotate: expandedStory === story.id ? 90 : 0 }} transition={{ duration: 0.3 }}>
-                    <ChevronRight className="ml-1 w-5 h-5" />
-                  </motion.div>
-                </motion.button>
+                  <ChevronRight
+                    className={`ml-1 w-5 h-5 transition-transform duration-300 ${
+                      expandedStory === story.id ? "rotate-90" : "group-hover:translate-x-1"
+                    }`}
+                  />
+                </button>
 
                 {/* Expanded content */}
-                <motion.div
-                  initial={false}
-                  animate={{
-                    height: expandedStory === story.id ? "auto" : 0,
-                    opacity: expandedStory === story.id ? 1 : 0,
-                    marginTop: expandedStory === story.id ? 16 : 0,
-                  }}
-                  transition={{ duration: 0.5 }}
-                  className="overflow-hidden"
+                <div
+                  className={`overflow-hidden transition-all duration-500 ${
+                    expandedStory === story.id ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0"
+                  }`}
                 >
                   <div className="pt-4 border-t border-green-200/50 dark:border-green-400/20">
                     <p className="text-gray-700 dark:text-gray-200 whitespace-pre-line">{story.content}</p>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
 
@@ -165,7 +177,7 @@ export default function MyStories() {
             {index < stories.length - 1 && (
               <div className="w-full h-px bg-gradient-to-r from-transparent via-green-300/50 to-transparent dark:via-green-500/30 my-16"></div>
             )}
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>
